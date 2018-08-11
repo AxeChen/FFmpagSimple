@@ -389,6 +389,15 @@ Java_com_app_axe_ffmpagsimple_pcm_ChangeToPcmActivity_changeMp3(JNIEnv *env, job
         return;
     }
 
+
+    // 开始解析视频流
+    // 首先这是mp4 如果需要解析成 yuv 需要用到 SwsContext
+    // 构造函数传入的参数为 原视频的宽高、像素格式、目标的宽高这里也取原视频的宽高（可以修改参数）
+    SwsContext *swsContext = sws_getContext(avCodecContext->width, avCodecContext->height,
+                                            avCodecContext->pix_fmt,
+                                            avCodecContext->width, avCodecContext->height,
+                                            AV_PIX_FMT_YUV420P, SWS_BICUBIC, NULL, NULL, NULL);
+
     // 解析的每一帧都是 AVPacket
     // 初始化AVPacket对象
     AVPacket *avPacket = (AVPacket *) av_malloc(sizeof(AVPacket));
