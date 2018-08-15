@@ -13,8 +13,15 @@ extern "C" {
 #include "libswscale/swscale.h"
 
 #include "libswresample/swresample.h"
+
+#include <SLES/OpenSLES.h>
+#include <SLES/OpenSLES_Android.h>
+
+
 }
-#define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"jason",FORMAT,##__VA_ARGS__);
+#include "FFmpegMusic.h"
+#define LOGI(FORMAT,...) __android_log_print(ANDROID_LOG_INFO,"jason",FORMAT,##__VA_ARGS__);
+#define LOGE(FORMAT,...) __android_log_print(ANDROID_LOG_ERROR,"jason",FORMAT,##__VA_ARGS__);
 
 extern "C" JNIEXPORT jstring
 JNICALL
@@ -617,3 +624,118 @@ Java_com_app_axe_ffmpagsimple_pcm_PlayMp3Activity_play(JNIEnv *env, jobject inst
 
     env->ReleaseStringUTFChars(input_, input);
 }
+
+
+SLObjectItf slObjectItf;
+SLEngineItf  engineItf;
+SLObjectItf pMix;
+SLEnvironmentalReverbItf slEnvironmentalReverbItf;
+SLEnvironmentalReverbSettings settings = SL_I3DL2_ENVIRONMENT_PRESET_DEFAULT;
+SLObjectItf slPlayItf;
+SLPlayItf  bqPlayerPlay;
+SLAndroidSimpleBufferQueueItf  bqPalyerQueue;
+//音量对象
+SLVolumeItf bqPalyerVolume;
+
+int sLresult;
+void *buffer;
+size_t bufferSize = 0;
+//只要喇叭一读完  就会回调此函数，添加pcm数据到缓冲区
+void bqPlayerCallBack(SLAndroidSimpleBufferQueueItf bq, void *context){
+    bufferSize=0;
+//    取到音频数据了
+    getPcm(&buffer, &bufferSize);
+    if (NULL != buffer && 0 != bufferSize) {
+//        播放的关键地方
+        SLresult  lresult=(*bqPalyerQueue)->Enqueue(bqPalyerQueue, buffer, bufferSize);
+        LOGE("正在播放%d ",lresult);
+    }
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_app_axe_ffmpagsimple_opensl_OpenSlEsPlayActivity_play(JNIEnv *env, jobject instance) {
+
+    // 初始化OpenSL引擎
+    slCreateEngine(&slObjectItf, 0, NULL, 0, NULL, NULL);
+    // OpenSL Realize
+    (*slObjectItf)->Realize(slObjectItf,SL_BOOLEAN_FALSE);
+
+    // 获取到引擎接口
+    (*slObjectItf)->GetInterface(slObjectItf,SL_IID_ENGINE,&engineItf);
+//    LOGE("引擎地址%p",engineItf)
+
+    // 创建混音器
+    (*engineItf)->CreateOutputMix(engineItf,&pMix,0,0,0);
+    // 混音器Realize
+    (*pMix)->Realize(pMix,SL_BOOLEAN_FALSE);
+
+    // 设置环境混响
+    sLresult = (*pMix)->GetInterface(pMix,SL_IID_ENVIRONMENTALREVERB,&slEnvironmentalReverbItf);
+
+    if(SL_RESULT_SUCCESS==sLresult){
+        (*slEnvironmentalReverbItf)->SetEnvironmentalReverbProperties(slEnvironmentalReverbItf,&settings);
+    }
+
+    int rate;
+    int channers;
+    createFFmpe(&rate, &channers);
+    SLDataLocator_AndroidBufferQueue android_queue = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE,2};
+    SLDataFormat_PCM slDataFormat_pcm = {SL_DATAFORMAT_PCM,(const SLuint32 )channers,SL_SAMPLINGRATE_44_1
+            ,SL_PCMSAMPLEFORMAT_FIXED_16
+            ,SL_PCMSAMPLEFORMAT_FIXED_16
+            , SL_SPEAKER_FRONT_CENTER|SL_SPEAKER_FRONT_RIGHT,SL_BYTEORDER_LITTLEENDIAN};
+    SLDataSource slDataSource={
+        &android_queue,&slDataFormat_pcm
+    };
+
+    SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX,pMix};
+    const SLInterfaceID  ids[3]={SL_IID_BUFFERQUEUE,SL_IID_EFFECTSEND,SL_IID_VOLUME};
+    const SLboolean req[3]={SL_BOOLEAN_TRUE,SL_BOOLEAN_TRUE,SL_BOOLEAN_TRUE};
+    // 设置混音器
+    SLDataSink audioSDK = {&outputMix,NULL};
+    // 创建播放接口
+//    SLresult (*CreateAudioPlayer) (
+//            SLEngineItf self,
+//            SLObjectItf * pPlayer,
+//            SLDataSource *pAudioSrc,
+//            SLDataSink *pAudioSnk,
+//            SLuint32 numInterfaces,
+//            const SLInterfaceID * pInterfaceIds,
+//            const SLboolean * pInterfaceRequired
+//    );
+    (*engineItf)->CreateAudioPlayer(engineItf,&slPlayItf,&slDataSource,&audioSDK,3,ids,req);
+
+    (*slPlayItf)->Realize(slPlayItf,SL_BOOLEAN_FALSE);
+
+    (*slPlayItf)->GetInterface(slPlayItf,SL_IID_PLAY,&bqPlayerPlay);
+
+    // 注册缓冲区
+    sLresult=(*slPlayItf)->GetInterface(slPlayItf, SL_IID_BUFFERQUEUE, &bqPalyerQueue);
+
+    // 设置回调接口
+
+    (*bqPalyerQueue)->RegisterCallback(bqPalyerQueue, bqPlayerCallBack, NULL);
+
+    (*slPlayItf)->GetInterface(slPlayItf, SL_IID_VOLUME,&bqPalyerVolume);
+    (*bqPlayerPlay)->SetPlayState(bqPlayerPlay,SL_PLAYSTATE_PLAYING);
+
+//    播放第一帧
+    bqPlayerCallBack(bqPalyerQueue, NULL);
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

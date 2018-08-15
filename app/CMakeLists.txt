@@ -3,7 +3,8 @@ cmake_minimum_required(VERSION 3.4.1)
 
 add_library(  native-lib
              SHARED
-             src/main/cpp/native-lib.cpp )
+             src/main/cpp/native-lib.cpp
+              src/main/cpp/FFmpegMusic.cpp)
 
 find_library( # Sets the name of the path variable.
               log-lib
@@ -87,4 +88,5 @@ target_link_libraries( native-lib
                       swresample-1
                       swscale-3
                       android
+                      OpenSLES
                        ${log-lib} )
