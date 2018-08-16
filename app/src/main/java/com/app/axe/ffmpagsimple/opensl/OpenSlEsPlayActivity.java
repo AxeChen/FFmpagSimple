@@ -1,14 +1,11 @@
 package com.app.axe.ffmpagsimple.opensl;
 
 import android.os.Bundle;
-import android.os.Environment;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.view.View;
 
 import com.app.axe.ffmpagsimple.R;
-
-import java.io.File;
 
 public class OpenSlEsPlayActivity extends AppCompatActivity {
 
@@ -35,7 +32,12 @@ public class OpenSlEsPlayActivity extends AppCompatActivity {
         play();
     }
 
+    public void stop(View view){
+        stopMusic();
+    }
+
     public native void play();
 
+    public native void stopMusic();
 
 }

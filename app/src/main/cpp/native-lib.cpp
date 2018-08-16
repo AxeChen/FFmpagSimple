@@ -721,18 +721,40 @@ Java_com_app_axe_ffmpagsimple_opensl_OpenSlEsPlayActivity_play(JNIEnv *env, jobj
     bqPlayerCallBack(bqPalyerQueue, NULL);
 }
 
+//SLObjectItf engineObject;
+//SLEngineItf  engineEngine;
+//SLObjectItf outputMixObject;
+//SLEnvironmentalReverbItf slEnvironmentalReverbItf;
+//SLEnvironmentalReverbSettings settings = SL_I3DL2_ENVIRONMENT_PRESET_DEFAULT;
+//SLObjectItf slPlayItf;
+//SLPlayItf  bqPlayerPlay;
+//SLAndroidSimpleBufferQueueItf  bqPalyerQueue;
+////音量对象
+//SLVolumeItf bqPalyerVolume;
 
+/**
+ * 停止播放
+ */
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_app_axe_ffmpagsimple_opensl_OpenSlEsPlayActivity_stopMusic(JNIEnv *env, jobject instance) {
 
-
-
-
-
-
-
-
-
-
-
-
-
-
+    if (slPlayItf != NULL) {
+        (*slPlayItf)->Destroy(slPlayItf);
+        slPlayItf = NULL;
+        bqPlayerPlay = NULL;
+        bqPalyerQueue = NULL;
+        bqPalyerVolume = NULL;
+    }
+    if (outputMixObject != NULL) {
+        (*outputMixObject)->Destroy(outputMixObject);
+        outputMixObject = NULL;
+        slEnvironmentalReverbItf = NULL;
+    }
+    if (engineObject != NULL) {
+        (*engineObject)->Destroy(engineObject);
+        engineObject = NULL;
+        engineEngine = NULL;
+    }
+    realseFFmpeg();
+}
