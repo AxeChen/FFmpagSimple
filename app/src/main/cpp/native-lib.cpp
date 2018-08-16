@@ -626,9 +626,9 @@ Java_com_app_axe_ffmpagsimple_pcm_PlayMp3Activity_play(JNIEnv *env, jobject inst
 }
 
 
-SLObjectItf slObjectItf;
-SLEngineItf  engineItf;
-SLObjectItf pMix;
+SLObjectItf engineObject;
+SLEngineItf  engineEngine;
+SLObjectItf outputMixObject;
 SLEnvironmentalReverbItf slEnvironmentalReverbItf;
 SLEnvironmentalReverbSettings settings = SL_I3DL2_ENVIRONMENT_PRESET_DEFAULT;
 SLObjectItf slPlayItf;
@@ -657,21 +657,21 @@ JNIEXPORT void JNICALL
 Java_com_app_axe_ffmpagsimple_opensl_OpenSlEsPlayActivity_play(JNIEnv *env, jobject instance) {
 
     // 初始化OpenSL引擎
-    slCreateEngine(&slObjectItf, 0, NULL, 0, NULL, NULL);
+    slCreateEngine(&engineObject, 0, NULL, 0, NULL, NULL);
     // OpenSL Realize
-    (*slObjectItf)->Realize(slObjectItf,SL_BOOLEAN_FALSE);
+    (*engineObject)->Realize(engineObject,SL_BOOLEAN_FALSE);
 
     // 获取到引擎接口
-    (*slObjectItf)->GetInterface(slObjectItf,SL_IID_ENGINE,&engineItf);
-//    LOGE("引擎地址%p",engineItf)
-
+    (*engineObject)->GetInterface(engineObject,SL_IID_ENGINE,&engineEngine);
+    LOGE("引擎地址%p",engineEngine)
     // 创建混音器
-    (*engineItf)->CreateOutputMix(engineItf,&pMix,0,0,0);
+    (*engineEngine)->CreateOutputMix(engineEngine,&outputMixObject,0,0,0);
     // 混音器Realize
-    (*pMix)->Realize(pMix,SL_BOOLEAN_FALSE);
+    (*outputMixObject)->Realize(outputMixObject,SL_BOOLEAN_FALSE);
 
     // 设置环境混响
-    sLresult = (*pMix)->GetInterface(pMix,SL_IID_ENVIRONMENTALREVERB,&slEnvironmentalReverbItf);
+    sLresult = (*outputMixObject)->GetInterface(outputMixObject,SL_IID_ENVIRONMENTALREVERB,&slEnvironmentalReverbItf);
+    LOGE("环境混响地址%p",slEnvironmentalReverbItf)
 
     if(SL_RESULT_SUCCESS==sLresult){
         (*slEnvironmentalReverbItf)->SetEnvironmentalReverbProperties(slEnvironmentalReverbItf,&settings);
@@ -681,30 +681,27 @@ Java_com_app_axe_ffmpagsimple_opensl_OpenSlEsPlayActivity_play(JNIEnv *env, jobj
     int channers;
     createFFmpe(&rate, &channers);
     SLDataLocator_AndroidBufferQueue android_queue = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE,2};
-    SLDataFormat_PCM slDataFormat_pcm = {SL_DATAFORMAT_PCM,(const SLuint32 )channers,SL_SAMPLINGRATE_44_1
-            ,SL_PCMSAMPLEFORMAT_FIXED_16
-            ,SL_PCMSAMPLEFORMAT_FIXED_16
-            , SL_SPEAKER_FRONT_CENTER|SL_SPEAKER_FRONT_RIGHT,SL_BYTEORDER_LITTLEENDIAN};
+    SLDataFormat_PCM slDataFormat_pcm = {
+            SL_DATAFORMAT_PCM,
+            (const SLuint32 )channers,
+            SL_SAMPLINGRATE_44_1,
+            SL_PCMSAMPLEFORMAT_FIXED_16,
+            SL_PCMSAMPLEFORMAT_FIXED_16,
+            SL_SPEAKER_FRONT_LEFT|SL_SPEAKER_FRONT_RIGHT,
+            SL_BYTEORDER_LITTLEENDIAN};
     SLDataSource slDataSource={
         &android_queue,&slDataFormat_pcm
     };
 
-    SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX,pMix};
+
+    SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX,outputMixObject};
+
     const SLInterfaceID  ids[3]={SL_IID_BUFFERQUEUE,SL_IID_EFFECTSEND,SL_IID_VOLUME};
     const SLboolean req[3]={SL_BOOLEAN_TRUE,SL_BOOLEAN_TRUE,SL_BOOLEAN_TRUE};
     // 设置混音器
     SLDataSink audioSDK = {&outputMix,NULL};
     // 创建播放接口
-//    SLresult (*CreateAudioPlayer) (
-//            SLEngineItf self,
-//            SLObjectItf * pPlayer,
-//            SLDataSource *pAudioSrc,
-//            SLDataSink *pAudioSnk,
-//            SLuint32 numInterfaces,
-//            const SLInterfaceID * pInterfaceIds,
-//            const SLboolean * pInterfaceRequired
-//    );
-    (*engineItf)->CreateAudioPlayer(engineItf,&slPlayItf,&slDataSource,&audioSDK,3,ids,req);
+    (*engineEngine)->CreateAudioPlayer(engineEngine,&slPlayItf,&slDataSource,&audioSDK,3,ids,req);
 
     (*slPlayItf)->Realize(slPlayItf,SL_BOOLEAN_FALSE);
 
