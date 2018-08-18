@@ -1,27 +1,27 @@
 #include <jni.h>
 #include <string>
-#include <android/log.h>
-#include <android/native_window_jni.h>
-#include <unistd.h>
-
+#include <SLES/OpenSLES.h>
+#include <SLES/OpenSLES_Android.h>
+#include "Log.h"
 extern "C" {
 //编码
 #include "libavcodec/avcodec.h"
 //封装格式处理
 #include "libavformat/avformat.h"
+#include "libswresample/swresample.h"
 //像素处理
 #include "libswscale/swscale.h"
-
-#include "libswresample/swresample.h"
-
-#include <SLES/OpenSLES.h>
-#include <SLES/OpenSLES_Android.h>
-
+#include <android/native_window_jni.h>
+#include <unistd.h>
 
 }
+
+#include "FFmpegAudio.h"
+#include "FFmpegVedio.h"
 #include "FFmpegMusic.h"
-#define LOGI(FORMAT,...) __android_log_print(ANDROID_LOG_INFO,"jason",FORMAT,##__VA_ARGS__);
-#define LOGE(FORMAT,...) __android_log_print(ANDROID_LOG_ERROR,"jason",FORMAT,##__VA_ARGS__);
+
+#define LOGI(FORMAT, ...) __android_log_print(ANDROID_LOG_INFO,"jason",FORMAT,##__VA_ARGS__);
+#define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"jason",FORMAT,##__VA_ARGS__);
 
 extern "C" JNIEXPORT jstring
 JNICALL
@@ -627,30 +627,33 @@ Java_com_app_axe_ffmpagsimple_pcm_PlayMp3Activity_play(JNIEnv *env, jobject inst
 
 
 SLObjectItf engineObject;
-SLEngineItf  engineEngine;
+SLEngineItf engineEngine;
 SLObjectItf outputMixObject;
 SLEnvironmentalReverbItf slEnvironmentalReverbItf;
 SLEnvironmentalReverbSettings settings = SL_I3DL2_ENVIRONMENT_PRESET_DEFAULT;
 SLObjectItf slPlayItf;
-SLPlayItf  bqPlayerPlay;
-SLAndroidSimpleBufferQueueItf  bqPalyerQueue;
+SLPlayItf bqPlayerPlay;
+SLAndroidSimpleBufferQueueItf bqPalyerQueue;
 //音量对象
 SLVolumeItf bqPalyerVolume;
 
 int sLresult;
 void *buffer;
 size_t bufferSize = 0;
+
 //只要喇叭一读完  就会回调此函数，添加pcm数据到缓冲区
-void bqPlayerCallBack(SLAndroidSimpleBufferQueueItf bq, void *context){
-    bufferSize=0;
+void bqPlayerCallBack(SLAndroidSimpleBufferQueueItf bq, void *context) {
+    bufferSize = 0;
 //    取到音频数据了
     getPcm(&buffer, &bufferSize);
     if (NULL != buffer && 0 != bufferSize) {
 //        播放的关键地方
-        SLresult  lresult=(*bqPalyerQueue)->Enqueue(bqPalyerQueue, buffer, bufferSize);
-        LOGE("正在播放%d ",lresult);
+        SLresult lresult = (*bqPalyerQueue)->Enqueue(bqPalyerQueue, buffer, bufferSize);
+        LOGE("正在播放%d ", lresult);
     }
 }
+
+
 
 extern "C"
 JNIEXPORT void JNICALL
@@ -659,78 +662,71 @@ Java_com_app_axe_ffmpagsimple_opensl_OpenSlEsPlayActivity_play(JNIEnv *env, jobj
     // 初始化OpenSL引擎
     slCreateEngine(&engineObject, 0, NULL, 0, NULL, NULL);
     // OpenSL Realize
-    (*engineObject)->Realize(engineObject,SL_BOOLEAN_FALSE);
+    (*engineObject)->Realize(engineObject, SL_BOOLEAN_FALSE);
 
     // 获取到引擎接口
-    (*engineObject)->GetInterface(engineObject,SL_IID_ENGINE,&engineEngine);
-    LOGE("引擎地址%p",engineEngine)
+    (*engineObject)->GetInterface(engineObject, SL_IID_ENGINE, &engineEngine);
+    LOGE("引擎地址%p", engineEngine)
     // 创建混音器
-    (*engineEngine)->CreateOutputMix(engineEngine,&outputMixObject,0,0,0);
+    (*engineEngine)->CreateOutputMix(engineEngine, &outputMixObject, 0, 0, 0);
     // 混音器Realize
-    (*outputMixObject)->Realize(outputMixObject,SL_BOOLEAN_FALSE);
+    (*outputMixObject)->Realize(outputMixObject, SL_BOOLEAN_FALSE);
 
     // 设置环境混响
-    sLresult = (*outputMixObject)->GetInterface(outputMixObject,SL_IID_ENVIRONMENTALREVERB,&slEnvironmentalReverbItf);
-    LOGE("环境混响地址%p",slEnvironmentalReverbItf)
+    sLresult = (*outputMixObject)->GetInterface(outputMixObject, SL_IID_ENVIRONMENTALREVERB,
+                                                &slEnvironmentalReverbItf);
+    LOGE("环境混响地址%p", slEnvironmentalReverbItf)
 
-    if(SL_RESULT_SUCCESS==sLresult){
-        (*slEnvironmentalReverbItf)->SetEnvironmentalReverbProperties(slEnvironmentalReverbItf,&settings);
+    if (SL_RESULT_SUCCESS == sLresult) {
+        (*slEnvironmentalReverbItf)->SetEnvironmentalReverbProperties(slEnvironmentalReverbItf,
+                                                                      &settings);
     }
 
     int rate;
     int channers;
     createFFmpe(&rate, &channers);
-    SLDataLocator_AndroidBufferQueue android_queue = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE,2};
+    SLDataLocator_AndroidBufferQueue android_queue = {SL_DATALOCATOR_ANDROIDSIMPLEBUFFERQUEUE, 2};
     SLDataFormat_PCM slDataFormat_pcm = {
             SL_DATAFORMAT_PCM,
-            (const SLuint32 )channers,
+            (const SLuint32) channers,
             SL_SAMPLINGRATE_44_1,
             SL_PCMSAMPLEFORMAT_FIXED_16,
             SL_PCMSAMPLEFORMAT_FIXED_16,
-            SL_SPEAKER_FRONT_LEFT|SL_SPEAKER_FRONT_RIGHT,
+            SL_SPEAKER_FRONT_LEFT | SL_SPEAKER_FRONT_RIGHT,
             SL_BYTEORDER_LITTLEENDIAN};
-    SLDataSource slDataSource={
-        &android_queue,&slDataFormat_pcm
+    SLDataSource slDataSource = {
+            &android_queue, &slDataFormat_pcm
     };
 
 
-    SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX,outputMixObject};
+    SLDataLocator_OutputMix outputMix = {SL_DATALOCATOR_OUTPUTMIX, outputMixObject};
 
-    const SLInterfaceID  ids[3]={SL_IID_BUFFERQUEUE,SL_IID_EFFECTSEND,SL_IID_VOLUME};
-    const SLboolean req[3]={SL_BOOLEAN_TRUE,SL_BOOLEAN_TRUE,SL_BOOLEAN_TRUE};
+    const SLInterfaceID ids[3] = {SL_IID_BUFFERQUEUE, SL_IID_EFFECTSEND, SL_IID_VOLUME};
+    const SLboolean req[3] = {SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE, SL_BOOLEAN_TRUE};
     // 设置混音器
-    SLDataSink audioSDK = {&outputMix,NULL};
+    SLDataSink audioSDK = {&outputMix, NULL};
     // 创建播放接口
-    (*engineEngine)->CreateAudioPlayer(engineEngine,&slPlayItf,&slDataSource,&audioSDK,3,ids,req);
+    (*engineEngine)->CreateAudioPlayer(engineEngine, &slPlayItf, &slDataSource, &audioSDK, 3, ids,
+                                       req);
 
-    (*slPlayItf)->Realize(slPlayItf,SL_BOOLEAN_FALSE);
+    (*slPlayItf)->Realize(slPlayItf, SL_BOOLEAN_FALSE);
 
-    (*slPlayItf)->GetInterface(slPlayItf,SL_IID_PLAY,&bqPlayerPlay);
+    (*slPlayItf)->GetInterface(slPlayItf, SL_IID_PLAY, &bqPlayerPlay);
 
     // 注册缓冲区
-    sLresult=(*slPlayItf)->GetInterface(slPlayItf, SL_IID_BUFFERQUEUE, &bqPalyerQueue);
+    sLresult = (*slPlayItf)->GetInterface(slPlayItf, SL_IID_BUFFERQUEUE, &bqPalyerQueue);
 
     // 设置回调接口
 
     (*bqPalyerQueue)->RegisterCallback(bqPalyerQueue, bqPlayerCallBack, NULL);
 
-    (*slPlayItf)->GetInterface(slPlayItf, SL_IID_VOLUME,&bqPalyerVolume);
-    (*bqPlayerPlay)->SetPlayState(bqPlayerPlay,SL_PLAYSTATE_PLAYING);
+    (*slPlayItf)->GetInterface(slPlayItf, SL_IID_VOLUME, &bqPalyerVolume);
+    (*bqPlayerPlay)->SetPlayState(bqPlayerPlay, SL_PLAYSTATE_PLAYING);
 
 //    播放第一帧
     bqPlayerCallBack(bqPalyerQueue, NULL);
 }
 
-//SLObjectItf engineObject;
-//SLEngineItf  engineEngine;
-//SLObjectItf outputMixObject;
-//SLEnvironmentalReverbItf slEnvironmentalReverbItf;
-//SLEnvironmentalReverbSettings settings = SL_I3DL2_ENVIRONMENT_PRESET_DEFAULT;
-//SLObjectItf slPlayItf;
-//SLPlayItf  bqPlayerPlay;
-//SLAndroidSimpleBufferQueueItf  bqPalyerQueue;
-////音量对象
-//SLVolumeItf bqPalyerVolume;
 
 /**
  * 停止播放
@@ -757,4 +753,122 @@ Java_com_app_axe_ffmpagsimple_opensl_OpenSlEsPlayActivity_stopMusic(JNIEnv *env,
         engineEngine = NULL;
     }
     realseFFmpeg();
+}
+
+
+const char *path;
+
+FFmpegAudio *audio;
+FFmpegVedio *vedio;
+
+pthread_t p_tid;
+int isPlay = 0;
+
+void *process(void *args){
+    LOGE("开启线程 %s",path);
+    av_register_all();
+    avformat_network_init();
+    AVFormatContext *pFormatCtx=avformat_alloc_context();
+    //第四个参数是 可以传一个 字典   是一个入参出参对象
+    if (avformat_open_input(&pFormatCtx, path, NULL, NULL) != 0) {
+        LOGE("%s","打开输入视频文件失败");
+    }
+    //3.获取视频信息
+    if(avformat_find_stream_info(pFormatCtx,NULL) < 0){
+        LOGE("%s","获取视频信息失败");
+    }
+
+    int i=0;
+    for (int i = 0; i < pFormatCtx->nb_streams; ++i) {
+        //    获取视频编解码器
+        AVCodecContext *pCodecCtx=pFormatCtx->streams[i]->codec;
+        LOGE("获取视频编码器上下文 %p  ",pCodecCtx);
+        //    加密的用不了
+        AVCodec *pCodex = avcodec_find_decoder(pCodecCtx->codec_id);
+        avcodec_open2(pCodecCtx, pCodex, NULL);
+        if (pFormatCtx->streams[i]->codec->codec_type == AVMEDIA_TYPE_AUDIO) {
+            LOGE("  找到音频 id %d", pFormatCtx->streams[i]->codec->codec_type);
+            audio->setCodec(pCodecCtx);
+//            设置时间
+            audio->setTimeBase(pFormatCtx->streams[i]->time_base);
+            audio->index = i;
+        }
+        if (pFormatCtx->streams[i]->codec->codec_type ==AVMEDIA_TYPE_VIDEO) {
+            vedio->setAvCodecContext(pCodecCtx);
+            vedio->setTimeBase(pFormatCtx->streams[i]->time_base);
+            LOGE("  找到视频 id %d", pFormatCtx->streams[i]->codec->codec_type);
+            vedio->index = i;
+        }
+    }
+
+
+
+//    开启播放
+    vedio->play(audio);
+    audio->play();
+    isPlay=1;
+    AVPacket *packet = (AVPacket *)av_malloc(sizeof(AVPacket));
+//    循环播放直至电影结束
+    //    av_read_frame会去申请内存
+    while (isPlay && av_read_frame(pFormatCtx, packet)==0) {
+//        LOGE("播放一帧");
+        if (vedio && vedio->isPlay && packet->stream_index == vedio->index) {
+            vedio->enQueue(packet);
+        } else if(audio && audio->isPlay && packet->stream_index == audio->index){
+            audio->enQueue(packet);
+        }
+//        销毁内存
+        av_packet_unref(packet);
+    }
+    isPlay = 0;
+    if (vedio && vedio->isPlay) {
+        vedio->stop();
+    }
+    if (audio && audio->isPlay) {
+        audio->stop();
+    }
+
+
+//    释放缓存
+    avformat_free_context(pFormatCtx);
+    av_free_packet(packet);
+
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_app_axe_ffmpagsimple_autovideo_AutoVideoActivity_play(JNIEnv *env, jobject instance,
+                                                               jstring path_) {
+    path = env->GetStringUTFChars(path_, 0);
+
+    audio = new FFmpegAudio;
+    vedio = new FFmpegVedio;
+
+    pthread_create(&p_tid,NULL,process,NULL);
+    env->ReleaseStringUTFChars(path_, path);
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_app_axe_ffmpagsimple_autovideo_AutoVideoActivity_display(JNIEnv *env, jobject instance,
+                                                                  jobject surface) {
+
+    // TODO
+
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_app_axe_ffmpagsimple_autovideo_AutoVideoActivity_stop(JNIEnv *env, jobject instance) {
+
+    // TODO
+
+}
+
+extern "C"
+JNIEXPORT void JNICALL
+Java_com_app_axe_ffmpagsimple_autovideo_AutoVideoActivity_release(JNIEnv *env, jobject instance) {
+
+    // TODO
+
 }

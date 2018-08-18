@@ -4,7 +4,9 @@ cmake_minimum_required(VERSION 3.4.1)
 add_library(  native-lib
              SHARED
              src/main/cpp/native-lib.cpp
-              src/main/cpp/FFmpegMusic.cpp)
+              src/main/cpp/FFmpegMusic.cpp
+              src/main/cpp/FFmpegAudio.cpp
+              src/main/cpp/FFmpegVedio.cpp)
 
 find_library( # Sets the name of the path variable.
               log-lib

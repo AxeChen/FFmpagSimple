@@ -1,13 +1,15 @@
-package com.app.axe.ffmpagsimple.opensl;
+package com.app.axe.ffmpagsimple.autovideo;
 
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
+import android.view.Surface;
 import android.view.View;
 
 import com.app.axe.ffmpagsimple.R;
 
-public class OpenSlEsPlayActivity extends AppCompatActivity {
+public class AutoVideoActivity extends AppCompatActivity {
+
 
     static {
         System.loadLibrary("avcodec-56");
@@ -21,24 +23,26 @@ public class OpenSlEsPlayActivity extends AppCompatActivity {
         System.loadLibrary("native-lib");
     }
 
-
     @Override
     protected void onCreate(@Nullable Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
-        setContentView(R.layout.activity_change_mp3);
-
+        setContentView(R.layout.activity_auto_play);
     }
 
-    public void change(View view) {
-        play();
+    public void play(View view) {
+        play("rtmp://live.hkstv.hk.lxdns.com/live/hks");
     }
 
-    public void stop(View view){
-        stopMusic();
-    }
+    /**
+     * 播放
+     *
+     * @param path
+     */
+    public native void play(String path);
 
-    public native void play();
+    public native void display(Surface surface);
 
-    public native void stopMusic();
+    public native void stop();
 
+    public native void release();
 }
