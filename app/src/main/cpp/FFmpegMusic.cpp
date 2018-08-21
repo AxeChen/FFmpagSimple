@@ -3,6 +3,9 @@
 //
 
 #include "FFmpegMusic.h"
+extern "C" {
+#include "Log.h"
+}
 
 AVFormatContext *avFormatContext;
 AVCodecContext *avCodecContext;

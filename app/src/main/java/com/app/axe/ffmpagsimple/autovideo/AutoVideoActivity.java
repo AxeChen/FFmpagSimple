@@ -4,45 +4,31 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.view.Surface;
+import android.view.SurfaceView;
 import android.view.View;
 
 import com.app.axe.ffmpagsimple.R;
 
+import java.io.File;
+
 public class AutoVideoActivity extends AppCompatActivity {
 
 
-    static {
-        System.loadLibrary("avcodec-56");
-        System.loadLibrary("avdevice-56");
-        System.loadLibrary("avfilter-5");
-        System.loadLibrary("avformat-56");
-        System.loadLibrary("avutil-54");
-        System.loadLibrary("postproc-53");
-        System.loadLibrary("swresample-1");
-        System.loadLibrary("swscale-3");
-        System.loadLibrary("native-lib");
-    }
-
+    AutoPlayer davidPlayer;
+    SurfaceView surfaceView;
     @Override
-    protected void onCreate(@Nullable Bundle savedInstanceState) {
+    protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_auto_play);
+        surfaceView = (SurfaceView) findViewById(R.id.surface);
+        davidPlayer = new AutoPlayer();
+        davidPlayer.setSurfaceView(surfaceView);
+
     }
-
-    public void play(View view) {
-        play("rtmp://live.hkstv.hk.lxdns.com/live/hks");
+    public void player(View view) {
+        davidPlayer.playJava("rtmp://live.hkstv.hk.lxdns.com/live/hks");
     }
-
-    /**
-     * 播放
-     *
-     * @param path
-     */
-    public native void play(String path);
-
-    public native void display(Surface surface);
-
-    public native void stop();
-
-    public native void release();
+    public void stop(View view) {
+        davidPlayer.release();
+    }
 }

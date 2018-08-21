@@ -20,7 +20,6 @@ extern "C" {
 
 #include "libswresample/swresample.h"
 }
-#define LOGE(FORMAT, ...) __android_log_print(ANDROID_LOG_ERROR,"jason",FORMAT,##__VA_ARGS__);
 
 class FFmpegMusic {
 

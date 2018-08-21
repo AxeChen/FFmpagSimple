@@ -1,12 +1,10 @@
 
 cmake_minimum_required(VERSION 3.4.1)
-
-add_library(  native-lib
+file(GLOB my_source src/main/cpp/*.cpp src/main/cpp/*.c)
+add_library( native-lib
              SHARED
-             src/main/cpp/native-lib.cpp
-              src/main/cpp/FFmpegMusic.cpp
-              src/main/cpp/FFmpegAudio.cpp
-              src/main/cpp/FFmpegVedio.cpp)
+             ${my_source}
+              )
 
 find_library( # Sets the name of the path variable.
               log-lib
